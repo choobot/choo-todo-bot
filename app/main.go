@@ -10,13 +10,21 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gbrlsnchs/jwt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/sessions"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/middleware"
 	"github.com/line/line-bot-sdk-go/linebot"
+	"golang.org/x/oauth2"
 )
+
+type IdToken struct {
+	*jwt.JWT
+	Name    string `json:"name"`
+	Picture string `json:"picture"`
+}
 
 type TodoBot struct {
 	client    *linebot.Client
@@ -104,11 +112,145 @@ func (this *TodoMySqlModel) remind() (map[string][]Todo, error) {
 	return nil, nil
 }
 
+type OAuthService interface {
+	GenerateOAuthState() string
+	OAuthConfig() *oauth2.Config
+}
+
+type LineOAuthService struct {
+	oAuthConfig *oauth2.Config
+}
+
+type JwtService interface {
+	ExtractIdToken(tokenValue string) (IdToken, error)
+}
+
+func NewLineJwtService() LineJwtService {
+	return LineJwtService{
+		ClientId:     os.Getenv("LINE_LOGIN_ID"),
+		ClientSecret: os.Getenv("LINE_LOGIN_SECRET"),
+	}
+}
+
+type LineJwtService struct {
+	ClientId     string
+	ClientSecret string
+}
+
+func (this *LineJwtService) ExtractIdToken(tokenValue string) (IdToken, error) {
+	var idToken IdToken
+	now := time.Now()
+	hs256 := jwt.NewHS256(this.ClientSecret)
+	payload, sig, err := jwt.Parse(tokenValue)
+	if err != nil {
+		return idToken, err
+	}
+	if err = hs256.Verify(payload, sig); err != nil {
+		return idToken, err
+	}
+
+	if err = jwt.Unmarshal(payload, &idToken); err != nil {
+		return idToken, err
+	}
+	iatValidator := jwt.IssuedAtValidator(now)
+	expValidator := jwt.ExpirationTimeValidator(now)
+	audValidator := jwt.AudienceValidator(this.ClientId)
+	if err = idToken.Validate(iatValidator, expValidator, audValidator); err != nil {
+		switch err {
+		case jwt.ErrIatValidation:
+			return idToken, err
+		case jwt.ErrExpValidation:
+			return idToken, err
+		case jwt.ErrAudValidation:
+			return idToken, err
+		}
+	}
+	return idToken, nil
+}
+
+func (this *LineOAuthService) GenerateOAuthState() string {
+	//TODO
+	return "thisshouldberandom"
+}
+
+func (this *LineOAuthService) OAuthConfig() *oauth2.Config {
+	return this.oAuthConfig
+}
+
+func NewLineOAuthService() LineOAuthService {
+	oAuthConfig := oauth2.Config{
+		ClientID:     os.Getenv("LINE_LOGIN_ID"),
+		ClientSecret: os.Getenv("LINE_LOGIN_SECRET"),
+		Scopes:       []string{"openid", "profile"},
+		RedirectURL:  os.Getenv("LINE_LOGIN_REDIRECT_URL"),
+		Endpoint: oauth2.Endpoint{
+			AuthURL:  "https://access.line.me/oauth2/v2.1/authorize",
+			TokenURL: "https://api.line.me/oauth2/v2.1/token",
+		},
+	}
+	return LineOAuthService{
+		oAuthConfig: &oAuthConfig,
+	}
+}
+
 type WebController struct {
+	oAuthService OAuthService
+	jwtService   JwtService
+}
+
+func (this *WebController) SetNoCache(c echo.Context) {
+	c.Response().Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	c.Response().Header().Set("Pragma", "no-cache")
+	c.Response().Header().Set("Expires", "0")
 }
 
 func (this *WebController) Index(c echo.Context) error {
-	return c.HTML(http.StatusOK, "hello world")
+	this.SetNoCache(c)
+	sess, _ := session.Get("session", c)
+	oauthToken := sess.Values["oauthToken"]
+	if oauthToken == nil {
+		return c.File("views/login.html")
+	}
+	// return c.File("views/list.html")
+	return c.HTML(http.StatusOK, fmt.Sprintf("%#v", sess))
+}
+
+func (this *WebController) Login(c echo.Context) error {
+	this.SetNoCache(c)
+	sess, _ := session.Get("session", c)
+	oauthState := this.oAuthService.GenerateOAuthState()
+	sess.Values["oauthState"] = oauthState
+	url := this.oAuthService.OAuthConfig().AuthCodeURL(oauthState, oauth2.AccessTypeOnline)
+	sess.Save(c.Request(), c.Response())
+	return c.Redirect(http.StatusTemporaryRedirect, url)
+}
+
+func (this *WebController) Auth(c echo.Context) error {
+	this.SetNoCache(c)
+	sess, _ := session.Get("session", c)
+	oauthState := sess.Values["oauthState"]
+	state := c.QueryParam("state")
+	if oauthState != "" && state != oauthState {
+		log.Printf("invalid oauth state, expected '%s', got '%s'\n", oauthState, state)
+		return c.Redirect(http.StatusTemporaryRedirect, "/")
+	}
+	code := c.QueryParam("code")
+	oauthToken, err := this.oAuthService.OAuthConfig().Exchange(oauth2.NoContext, code)
+	if err != nil {
+		return c.HTML(http.StatusInternalServerError, err.Error())
+	}
+
+	idToken, err := this.jwtService.ExtractIdToken(oauthToken.Extra("id_token").(string))
+	if err != nil {
+		return c.HTML(http.StatusInternalServerError, err.Error())
+	}
+
+	sess.Values["oauthToken"] = oauthToken.AccessToken
+	sess.Values["oauthId"] = idToken.JWT.Subject
+	sess.Values["oauthName"] = idToken.Name
+	sess.Values["oauthPicture"] = idToken.Picture
+	sess.Save(c.Request(), c.Response())
+	return c.Redirect(http.StatusTemporaryRedirect, "/")
 }
 
 func main() {
@@ -123,20 +265,26 @@ func main() {
 		todoModel: &todoModel,
 		client:    client,
 	}
-
-	webController := WebController{}
+	oAuthSerivce := NewLineOAuthService()
+	jwtService := NewLineJwtService()
+	webController := WebController{
+		oAuthService: &oAuthSerivce,
+		jwtService:   &jwtService,
+	}
 
 	e := echo.New()
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
-	e.Use(session.Middleware(sessions.NewCookieStore([]byte("secret"))))
+	e.Use(session.Middleware(sessions.NewCookieStore([]byte("choo-todo-bot"))))
 
 	// Routes
+	e.Static("/", "assets")
+	e.GET("/", webController.Index)
+
 	e.POST("/callback", bot.Response)
 	e.GET("/remind", bot.Remind)
-	e.GET("/", webController.Index)
-	// e.GET("/login", webController.Login)
-	// e.GET("/auth", webController.Auth)
+	e.GET("/login", webController.Login)
+	e.GET("/auth", webController.Auth)
 	// e.GET("/list", webController.List)
 	// e.POST("/pin", webController.Pin)
 	// e.POST("/done", webController.Done)

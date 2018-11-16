@@ -7,6 +7,9 @@ services:
       - DATA_SOURCE_NAME=${DATA_SOURCE_NAME}
       - LINE_BOT_SECRET=${LINE_BOT_SECRET}
       - LINE_BOT_TOKEN=${LINE_BOT_TOKEN}
+      - LINE_LOGIN_ID=${LINE_LOGIN_ID}
+      - LINE_LOGIN_SECRET=${LINE_LOGIN_SECRET}
+      - LINE_LOGIN_REDIRECT_URL=${LINE_LOGIN_REDIRECT_URL}
       - EDIT_URL=${EDIT_URL}
     volumes:
       - mysql-data:/var/lib/mysql/
