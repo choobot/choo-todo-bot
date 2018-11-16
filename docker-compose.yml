@@ -1,0 +1,27 @@
+version: '2'
+
+services:
+  go:
+    build: ./
+    environment:
+      - DATA_SOURCE_NAME=${DATA_SOURCE_NAME}
+      - LINE_BOT_SECRET=${LINE_BOT_SECRET}
+      - LINE_BOT_TOKEN=${LINE_BOT_TOKEN}
+      - EDIT_URL=${EDIT_URL}
+    volumes:
+      - mysql-data:/var/lib/mysql/
+    ports:
+      - '80:80'
+  mysql:
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+    volumes:
+      - mysql-data:/var/lib/mysql/
+    ports:
+      - '3306:3306'
+volumes:
+  mysql-data:
