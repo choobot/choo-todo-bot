@@ -11,8 +11,6 @@ services:
       - LINE_LOGIN_SECRET=${LINE_LOGIN_SECRET}
       - LINE_LOGIN_REDIRECT_URL=${LINE_LOGIN_REDIRECT_URL}
       - EDIT_URL=${EDIT_URL}
-    volumes:
-      - mysql-data:/var/lib/mysql/
     ports:
       - '80:80'
   mysql:
