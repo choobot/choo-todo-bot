@@ -1,5 +1,11 @@
 #!/bin/sh
 
+
+source env.sh
+
 heroku container:login
-heroku container:push web --app=choo-todo-bot
-heroku container:release web --app=choo-todo-bot
+
+heroku config:set LINE_BOT_SECRET=$LINE_BOT_SECRET LINE_BOT_TOKEN=$LINE_BOT_TOKEN LINE_LOGIN_ID=$LINE_LOGIN_ID LINE_LOGIN_SECRET=$LINE_LOGIN_SECRET LINE_LOGIN_REDIRECT_URL=$PROD_LINE_LOGIN_REDIRECT_URL EDIT_URL=$PROD_EDIT_URL DATA_SOURCE_NAME=$PROD_DATA_SOURCE_NAME --app=$HEROKU_APP
+
+heroku container:push web --app=$HEROKU_APP
+heroku container:release web --app=$HEROKU_APP

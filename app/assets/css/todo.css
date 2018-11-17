@@ -1,0 +1,12 @@
+.done-true {
+    text-decoration: line-through;
+    color: grey;
+}
+.header {
+    text-align: right;
+}
+#working {
+    position: fixed;
+    background-color: #00be00;
+    color: #fff;
+}

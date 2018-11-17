@@ -1,1 +1,47 @@
-This is Todo list
+<!doctype html>
+<html ng-app="todoApp">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/css/todo.css">
+    <title>Choo Todo Bot</title>
+  </head>
+  <body>
+    <span id="working">Working...</span>
+    <div ng-controller="TodoListController as todoList">
+        <div class="header"><img src="{{todoList.user.oauthPicture}}" style="width:32px;"> {{todoList.user.oauthName}} <a href="/logout"><button type="button" class="btn btn-secondary btn-sm">Logout</button></a></div>
+      <span>{{todoList.remaining()}} of {{todoList.todos.length}} remaining</span>
+
+      <table class="table table-striped">
+          <thead class="thead-dark">
+            <tr>
+              <th scope="col">Pin</th>
+              <th scope="col">Done</th>
+              <th scope="col">Task</th>
+              <th scope="col">Due</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr ng-repeat="todo in todoList.pinTasks()">
+                <td><input type="checkbox" ng-model="todo.Pin" ng-click="todoList.setPin(todo.ID, !todo.Pin)"></td>
+                <td><input type="checkbox" ng-model="todo.Done" ng-click="todoList.setDone(todo.ID, !todo.Done)"></td>
+                <td><span class="done-{{todo.Done}}">{{todo.Task}}</span></td>
+                <td><span class="done-{{todo.Done}}">{{todoList.formatDate(todo.Due)}} {{todoList.isOverdue(todo)}}</span></td>
+            </tr>
+            <tr ng-repeat="todo in todoList.nonPinTasks()">
+                <td><input type="checkbox" ng-model="todo.Pin" ng-click="todoList.setPin(todo.ID, !todo.Pin)"></td>
+                <td><input type="checkbox" ng-model="todo.Done" ng-click="todoList.setDone(todo.ID, !todo.Done)"></td>
+              <td><span class="done-{{todo.Done}}">{{todo.Task}}</span></td>
+              <td><span class="done-{{todo.Done}}">{{todoList.formatDate(todo.Due)}} {{todoList.isOverdue(todo)}}</span></td>
+            </tr>
+          </tbody>
+      </table>
+
+    </div>
+
+    <script src="/js/angular.min.js"></script>
+    <script src="/js/moment.min.js"></script>
+    <script src="/js/todo.js"></script>
+
+  </body>
+</html>

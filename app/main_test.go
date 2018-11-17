@@ -164,3 +164,47 @@ func TestNewTodoMySqlModel(t *testing.T) {
 	}
 
 }
+
+func TestTodoBotFormatDate(t *testing.T) {
+	loc, _ := time.LoadLocation("Asia/Bangkok")
+	layout := "2006-01-02 15:04"
+	now, _ := time.ParseInLocation("2006-01-02", "2018-11-15", loc)
+	cases := []struct {
+		in   string
+		want string
+	}{
+		{
+			in:   "2018-11-15 15:04",
+			want: "Today at 15:04",
+		},
+		{
+			in:   "2018-11-16 15:04",
+			want: "Tomorrow at 15:04",
+		},
+		{
+			in:   "2018-11-17 15:04",
+			want: "Sat at 15:04",
+		},
+		{
+			in:   "2018-11-14 15:04",
+			want: "Yesterday at 15:04",
+		},
+		{
+			in:   "2018-11-13 15:04",
+			want: "Last Tue at 15:04",
+		},
+		{
+			in:   "2018-11-20 15:04",
+			want: "Next Tue at 15:04",
+		},
+	}
+
+	bot := TodoBot{}
+	for _, c := range cases {
+		date, _ := time.ParseInLocation(layout, c.in, loc)
+		got := bot.FormatDate(now, date)
+		if got != c.want {
+			t.Errorf("TodoBot.FormatDate(%q) == %q want %q", c.in, got, c.want)
+		}
+	}
+}

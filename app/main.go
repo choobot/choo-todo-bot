@@ -1,12 +1,16 @@
 package main
 
 import (
+	"crypto/sha1"
 	"database/sql"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -41,19 +45,65 @@ type Todo struct {
 }
 
 type TodoModel interface {
-	list(userID string) ([]Todo, error)
+	List(userID string) ([]Todo, error)
 	Create(todo Todo) error
-	pin(id int) error
-	done(id int) error
-	remind() (map[string][]Todo, error)
+	Pin(todo Todo) error
+	Done(todo Todo) error
+	Remind() (map[string][]Todo, error)
 }
 
 type TodoMySqlModel struct {
 	db *sql.DB
 }
 
-func (this *TodoMySqlModel) list(userID string) ([]Todo, error) {
-	return nil, nil
+func (this *TodoMySqlModel) SetTimeZone() error {
+	sql := `SET time_zone = 'Asia/Bangkok'`
+	_, err := this.db.Exec(sql)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (this *TodoMySqlModel) List(userID string) ([]Todo, error) {
+	this.SetTimeZone()
+	err := this.CreateTablesIfNotExist()
+	if err != nil {
+		return nil, err
+	}
+	var todos []Todo
+	rows, err := this.db.Query("SELECT id, task, done, pin, due FROM todo WHERE user_id=?", userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id int
+		var task string
+		var done bool
+		var pin bool
+		var due time.Time
+		if err := rows.Scan(&id, &task, &done, &pin, &due); err != nil {
+			return nil, err
+		}
+		loc, _ := time.LoadLocation("Asia/Bangkok")
+		due = due.In(loc)
+		todo := Todo{
+			ID:     id,
+			UserID: userID,
+			Task:   task,
+			Pin:    pin,
+			Done:   done,
+			Due:    due,
+		}
+		todos = append(todos, todo)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return todos, nil
 }
 
 func NewTodoMySqlModel() TodoMySqlModel {
@@ -82,39 +132,110 @@ func (this *TodoMySqlModel) CreateTablesIfNotExist() error {
 			return err
 		}
 	}
+
 	return nil
 }
 
 func (this *TodoMySqlModel) Create(todo Todo) error {
+	this.SetTimeZone()
 	err := this.CreateTablesIfNotExist()
 	if err != nil {
 		return err
 	}
-
 	sql := `INSERT INTO todo ( user_id, task, due ) VALUES( ?, ?, ?)`
-	_, err = this.db.Exec(sql, todo.UserID, todo.Task, todo.Due)
+	result, err := this.db.Exec(sql, todo.UserID, todo.Task, todo.Due)
 	if err != nil {
 		return err
+	}
+	num, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if num != 1 {
+		return errors.New("No record")
+	}
+
+	return nil
+}
+func (this *TodoMySqlModel) Pin(todo Todo) error {
+	sql := `UPDATE todo SET pin=? WHERE id=?`
+	result, err := this.db.Exec(sql, todo.Pin, todo.ID)
+	if err != nil {
+		return err
+	}
+	num, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if num != 1 {
+		return errors.New("No record")
 	}
 
 	return nil
 }
 
-func (this *TodoMySqlModel) pin(id int) error {
+func (this *TodoMySqlModel) Done(todo Todo) error {
+	sql := `UPDATE todo SET done=? WHERE id=?`
+	result, err := this.db.Exec(sql, todo.Done, todo.ID)
+	if err != nil {
+		return err
+	}
+	num, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if num != 1 {
+		return errors.New("No record")
+	}
+
 	return nil
 }
 
-func (this *TodoMySqlModel) done(id int) error {
-	return nil
-}
+func (this *TodoMySqlModel) Remind() (map[string][]Todo, error) {
+	this.SetTimeZone()
+	userTodos := map[string][]Todo{}
+	rows, err := this.db.Query("SELECT user_id, id, task, done, pin, due FROM todo ORDER BY user_id, done, pin DESC, due")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
-func (this *TodoMySqlModel) remind() (map[string][]Todo, error) {
-	return nil, nil
+	for rows.Next() {
+		var userID string
+		var id int
+		var task string
+		var done bool
+		var pin bool
+		var due time.Time
+		if err := rows.Scan(&userID, &id, &task, &done, &pin, &due); err != nil {
+			return nil, err
+		}
+		loc, _ := time.LoadLocation("Asia/Bangkok")
+		due = due.In(loc)
+		todo := Todo{
+			ID:     id,
+			UserID: userID,
+			Task:   task,
+			Pin:    pin,
+			Done:   done,
+			Due:    due,
+		}
+		log.Println(due)
+		//Add to map
+		todos := userTodos[userID]
+		todos = append(todos, todo)
+		userTodos[userID] = todos
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return userTodos, nil
 }
 
 type OAuthService interface {
 	GenerateOAuthState() string
 	OAuthConfig() *oauth2.Config
+	Signout(oauthToken string) error
 }
 
 type LineOAuthService struct {
@@ -169,12 +290,33 @@ func (this *LineJwtService) ExtractIdToken(tokenValue string) (IdToken, error) {
 }
 
 func (this *LineOAuthService) GenerateOAuthState() string {
-	//TODO
-	return "thisshouldberandom"
+	salt := "choo-todo-bot"
+	data := []byte(strconv.Itoa(int(time.Now().Unix())) + salt)
+	return fmt.Sprintf("%x", sha1.Sum(data))
 }
 
 func (this *LineOAuthService) OAuthConfig() *oauth2.Config {
 	return this.oAuthConfig
+}
+
+func (this *LineOAuthService) Signout(oauthToken string) error {
+	form := url.Values{}
+	form.Add("access_token", oauthToken)
+	form.Add("client_id", this.OAuthConfig().ClientID)
+	form.Add("client_secret", this.OAuthConfig().ClientSecret)
+	req, err := http.NewRequest("POST", "https://api.line.me/oauth2/v2.1/revoke", strings.NewReader(form.Encode()))
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	client := &http.Client{}
+	res, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	if res.StatusCode != http.StatusOK {
+		defer res.Body.Close()
+		body, _ := ioutil.ReadAll(res.Body)
+		log.Println(string(body))
+	}
+	return nil
 }
 
 func NewLineOAuthService() LineOAuthService {
@@ -196,6 +338,7 @@ func NewLineOAuthService() LineOAuthService {
 type WebController struct {
 	oAuthService OAuthService
 	jwtService   JwtService
+	todoModel    TodoModel
 }
 
 func (this *WebController) SetNoCache(c echo.Context) {
@@ -211,8 +354,8 @@ func (this *WebController) Index(c echo.Context) error {
 	if oauthToken == nil {
 		return c.File("views/login.html")
 	}
-	// return c.File("views/list.html")
-	return c.HTML(http.StatusOK, fmt.Sprintf("%#v", sess))
+	return c.File("views/list.html")
+	// return c.HTML(http.StatusOK, fmt.Sprintf("%#v", sess))
 }
 
 func (this *WebController) Login(c echo.Context) error {
@@ -253,6 +396,71 @@ func (this *WebController) Auth(c echo.Context) error {
 	return c.Redirect(http.StatusTemporaryRedirect, "/")
 }
 
+func (this *WebController) List(c echo.Context) error {
+	this.SetNoCache(c)
+	sess, _ := session.Get("session", c)
+	userID := sess.Values["oauthId"]
+	if userID == "" {
+		return c.Redirect(http.StatusTemporaryRedirect, "/")
+	}
+	todos, err := this.todoModel.List(userID.(string))
+	if err != nil {
+		return c.HTML(http.StatusInternalServerError, err.Error())
+	}
+	return c.JSON(http.StatusOK, todos)
+}
+
+func (this *WebController) Pin(c echo.Context) error {
+	this.SetNoCache(c)
+	todo := new(Todo)
+	if err := c.Bind(todo); err != nil {
+		return c.HTML(http.StatusInternalServerError, err.Error())
+	}
+	if err := this.todoModel.Pin(*todo); err != nil {
+		return c.HTML(http.StatusInternalServerError, err.Error())
+	}
+	return c.NoContent(http.StatusOK)
+}
+
+func (this *WebController) Done(c echo.Context) error {
+	this.SetNoCache(c)
+	todo := new(Todo)
+	if err := c.Bind(todo); err != nil {
+		return c.HTML(http.StatusInternalServerError, err.Error())
+	}
+	log.Println(todo)
+	if err := this.todoModel.Done(*todo); err != nil {
+		return c.HTML(http.StatusInternalServerError, err.Error())
+	}
+	return c.NoContent(http.StatusOK)
+}
+
+func (this *WebController) UserInfo(c echo.Context) error {
+	this.SetNoCache(c)
+	sess, _ := session.Get("session", c)
+	data := map[string]string{
+		"oauthName":    sess.Values["oauthName"].(string),
+		"oauthPicture": sess.Values["oauthPicture"].(string),
+	}
+
+	return c.JSON(http.StatusOK, data)
+}
+
+func (this *WebController) Logout(c echo.Context) error {
+	this.SetNoCache(c)
+	sess, _ := session.Get("session", c)
+	oauthToken := sess.Values["oauthToken"]
+	if oauthToken != nil {
+		err := this.oAuthService.Signout(oauthToken.(string))
+		if err != nil {
+			return c.HTML(http.StatusInternalServerError, err.Error())
+		}
+	}
+	sess.Options.MaxAge = -1
+	sess.Save(c.Request(), c.Response())
+	return c.Redirect(http.StatusTemporaryRedirect, "/")
+}
+
 func main() {
 	client, err := linebot.New(os.Getenv("LINE_BOT_SECRET"), os.Getenv("LINE_BOT_TOKEN"))
 	if err != nil {
@@ -270,6 +478,7 @@ func main() {
 	webController := WebController{
 		oAuthService: &oAuthSerivce,
 		jwtService:   &jwtService,
+		todoModel:    &todoModel,
 	}
 
 	e := echo.New()
@@ -280,16 +489,15 @@ func main() {
 	// Routes
 	e.Static("/", "assets")
 	e.GET("/", webController.Index)
-
 	e.POST("/callback", bot.Response)
 	e.GET("/remind", bot.Remind)
 	e.GET("/login", webController.Login)
 	e.GET("/auth", webController.Auth)
-	// e.GET("/list", webController.List)
-	// e.POST("/pin", webController.Pin)
-	// e.POST("/done", webController.Done)
-	// e.GET("/user", webController.UserInfo)
-	// e.GET("/logout", webController.Logout)
+	e.GET("/list", webController.List)
+	e.POST("/pin", webController.Pin)
+	e.POST("/done", webController.Done)
+	e.GET("/user-info", webController.UserInfo)
+	e.GET("/logout", webController.Logout)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -300,10 +508,83 @@ func main() {
 }
 
 func (this *TodoBot) Remind(c echo.Context) error {
-	if _, err := this.client.PushMessage("U5fa9b1534778c27d104143614d17fadd", linebot.NewTextMessage("this is reminder")).Do(); err != nil {
-		log.Println(err)
+	userTodos, err := this.todoModel.Remind()
+	log.Println(userTodos)
+	if err != nil {
+		return c.HTML(http.StatusInternalServerError, err.Error())
+	}
+	for userID, todos := range userTodos {
+		message := "Hi there,\n"
+		showDone := false
+		remaining := 0
+		for i, todo := range todos {
+			if i == 0 && todo.Done {
+				message += "Well done, you have no remaining tasks to be done :)\n"
+			} else if i == 0 {
+				message += "Tasks to be done:\n"
+			}
+			if !todo.Done {
+				remaining++
+			} else if todo.Done && !showDone {
+				message += "Tasks completed:\n"
+				showDone = true
+			}
+			if todo.Pin {
+				message += "*** "
+			} else {
+				message += "    "
+			}
+			due := this.FormatDate(time.Now(), todo.Due)
+			if !todo.Done && time.Now().After(todo.Due) {
+				due += " (overdue)"
+			}
+			message += fmt.Sprintf("%v : %v\n", todo.Task, due)
+
+		}
+		if remaining != 0 {
+			message += fmt.Sprintf("%d of %d remaining, just do it!", remaining, len(todos))
+		}
+		//Fork for massive API calls
+		go this.PushMessage(userID, message)
 	}
 	return c.NoContent(http.StatusOK)
+}
+
+func (this *TodoBot) FormatDate(now time.Time, date time.Time) string {
+	// Mon Jan 2 15:04:05 -0700 MST 2006
+	dateText := date.Format("2006-01-02")
+	timeText := date.Format("15:04")
+	_, todayWeek := now.ISOWeek()
+	_, dueWeek := date.ISOWeek()
+	today := now.Format("2006-01-02")
+	tomorrow := now.AddDate(0, 0, 1).Format("2006-01-02")
+	yesterday := now.AddDate(0, 0, -1).Format("2006-01-02")
+	if dateText == today {
+		// Today
+		return "Today at " + timeText
+	} else if dateText == tomorrow {
+		// Tomorrow
+		return "Tomorrow at " + timeText
+	} else if dateText == yesterday {
+		// Yesterday
+		return "Yesterday at " + timeText
+	} else if todayWeek == dueWeek && now.After(date) {
+		// This week
+		return "Last " + date.Format("Mon at 15:04")
+	} else if todayWeek == dueWeek {
+		// This week in the past
+		return date.Format("Mon at 15:04")
+	} else if dueWeek-todayWeek == 1 {
+		// Next week
+		return "Next " + date.Format("Mon at 15:04")
+	}
+	return date.Format("Mon 2 Jan 06 at 15:04")
+}
+
+func (this *TodoBot) PushMessage(userID string, message string) {
+	if _, err := this.client.PushMessage(userID, linebot.NewTextMessage(message)).Do(); err != nil {
+		log.Println(err)
+	}
 }
 
 // 1) Go shopping : 2/5/18 : 13:00

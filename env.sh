@@ -9,4 +9,9 @@ export EDIT_URL=https://choo-todo-bot.serveo.net/
 export MYSQL_USER=todo_user
 export MYSQL_PASSWORD=todo_pass
 export MYSQL_DATABASE=todo_db
-export DATA_SOURCE_NAME="$MYSQL_USER:$MYSQL_PASSWORD@tcp(mysql:3306)/$MYSQL_DATABASE"
+export DATA_SOURCE_NAME="$MYSQL_USER:$MYSQL_PASSWORD@tcp(mysql:3306)/$MYSQL_DATABASE?parseTime=true"
+
+export HEROKU_APP=
+export PROD_LINE_LOGIN_REDIRECT_URL=
+export PROD_EDIT_URL=
+export PROD_DATA_SOURCE_NAME=""
