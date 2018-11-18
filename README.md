@@ -29,8 +29,9 @@
 
 ## Tech Stack
 - Go
-- Angular
 - Echo
+- Angular
+- Bootstrap
 - MySQL
 - LINE Messaging API
 - Docker

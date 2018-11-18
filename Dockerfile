@@ -1,5 +1,5 @@
 FROM golang:1.11.2-alpine3.8
-ENV SRC_DIR /go/src/app/
+ENV SRC_DIR /go/src/github.com/choobot/choo-todo-bot/app/
 WORKDIR ${SRC_DIR}
 RUN apk add build-base && \
     apk add git
