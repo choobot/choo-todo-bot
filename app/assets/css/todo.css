@@ -7,6 +7,16 @@
 }
 #working {
     position: fixed;
+    top: 0;
+    left: 0;
     background-color: #00be00;
     color: #fff;
-}
+  }
+  
+  #working.true {
+    display: block;
+  }
+  
+  #working.false {
+    display: none;
+  }

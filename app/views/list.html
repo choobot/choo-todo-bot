@@ -10,10 +10,10 @@
     <title>Choo Todo Bot</title>
   </head>
   <body>
-    <span id="working">Working...</span>
     <div ng-controller="TodoListController as todoList" class="ng-cloak">
         <div class="header"><img src="{{todoList.user.oauthPicture}}" style="width:32px;"> {{todoList.user.oauthName}} <a href="/logout"><button type="button" class="btn btn-secondary btn-sm">Logout</button></a></div>
-      <span>{{todoList.remaining()}} of {{todoList.todos.length}} remaining</span>
+        <span id="working" class="{{todoList.isWorking}}">Working...</span>
+        <span>{{todoList.remaining()}} of {{todoList.todos.length}} remaining</span>
 
       <table class="table table-striped">
           <thead class="thead-dark">

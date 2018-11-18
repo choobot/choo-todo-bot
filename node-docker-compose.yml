@@ -1,0 +1,11 @@
+
+version: '2'
+
+services:
+  node:
+    image: node:10.13-stretch
+    working_dir: /js/
+    volumes:
+      - ./app/assets/js/:/js/
+    entrypoint: "/bin/sh"
+    command: ["-c", "yarn install && yarn test"]

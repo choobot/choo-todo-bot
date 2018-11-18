@@ -36,3 +36,4 @@
 - LINE Messaging API
 - Docker
 - Heroku
+- Node.js, Karma, Jasmine, PhantomJS (for Front-End Unit Testing)

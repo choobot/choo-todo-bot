@@ -1,16 +1,15 @@
 angular.module('todoApp', [])
   .controller('TodoListController', function ($scope, $http) {
     var todoList = this;
-    var workingCount = 0;
-    addWorking();
+    todoList.isWorking = true;
     $http.get('/user-info').then(function (response) {
       todoList.user = response.data;
-      doneWorking();
+      todoList.isWorking = false;
     });
-    addWorking();
+    todoList.isWorking = true;
     $http.get('/list').then(function (response) {
       todoList.todos = response.data;
-      doneWorking();
+      todoList.isWorking = false;
     });
 
     todoList.remaining = function () {
@@ -39,24 +38,24 @@ angular.module('todoApp', [])
     };
 
     todoList.setDone = function (id, status) {
-      addWorking();
+      todoList.isWorking = true;
       var data = {
         "ID": id,
         "Done": status
       };
       $http.post('/done', data).then(function (response) {
-        doneWorking();
+        todoList.isWorking = false;
       });
     };
 
     todoList.setPin = function (id, status) {
-      addWorking();
+      todoList.isWorking = true;
       var data = {
         "ID": id,
         "Pin": status
       };
       $http.post('/pin', data).then(function (response) {
-        doneWorking();
+        todoList.isWorking = false;
       });
     };
 
@@ -69,18 +68,6 @@ angular.module('todoApp', [])
         }
         return 0;
       });
-    }
-
-    function addWorking() {
-      workingCount++;
-      document.getElementById("working").style.display = "inline";
-    }
-
-    function doneWorking() {
-      workingCount--;
-      if (workingCount <= 0) {
-        document.getElementById("working").style.display = "none";
-      }
     }
 
     todoList.formatDate = function (date) {

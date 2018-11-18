@@ -1,0 +1,16 @@
+{
+  "license": "UNLICENSED",
+  "scripts": {
+    "test": "karma start karma.conf.js --single-run"
+  },
+  "devDependencies": {
+    "angular": "^1.7.5",
+    "angular-mocks": "^1.7.5",
+    "jasmine": "^3.3.0",
+    "jasmine-core": "^3.3.0",
+    "karma": "^3.1.1",
+    "karma-browserify": "^5.3.0",
+    "karma-phantomjs-launcher": "^1.0.4",
+    "karma-jasmine": "^1.1.2"
+  }
+}
