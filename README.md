@@ -13,6 +13,7 @@
 - Heroku CLI (for deployment only)
 
 ## Local Running and Expose to the internet
+- Copy the project to $GOPATH/src/github.com/choobot/choo-todo-bot/
 - Config environment variables in env.sh
 - $ ./run.sh
 - The webhook URL for LINE Messaging API will be https://choo-todo-bot.serveo.net/callback
