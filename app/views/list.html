@@ -4,11 +4,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/css/bootstrap.min.css">
     <link rel="stylesheet" href="/css/todo.css">
+    <script src="/js/angular.min.js"></script>
+    <script src="/js/moment.min.js"></script>
+    <script src="/js/todo.js"></script>
     <title>Choo Todo Bot</title>
   </head>
   <body>
     <span id="working">Working...</span>
-    <div ng-controller="TodoListController as todoList">
+    <div ng-controller="TodoListController as todoList" class="ng-cloak">
         <div class="header"><img src="{{todoList.user.oauthPicture}}" style="width:32px;"> {{todoList.user.oauthName}} <a href="/logout"><button type="button" class="btn btn-secondary btn-sm">Logout</button></a></div>
       <span>{{todoList.remaining()}} of {{todoList.todos.length}} remaining</span>
 
@@ -39,9 +42,7 @@
 
     </div>
 
-    <script src="/js/angular.min.js"></script>
-    <script src="/js/moment.min.js"></script>
-    <script src="/js/todo.js"></script>
+
 
   </body>
 </html>
