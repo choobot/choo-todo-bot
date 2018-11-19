@@ -76,6 +76,7 @@ func main() {
 	e.GET("/user-info", webController.UserInfo)
 	e.GET("/logout", webController.Logout)
 	e.POST("/edit", webController.Edit)
+	e.POST("/delete", webController.Delete)
 
 	port := os.Getenv("PORT")
 	if port == "" {

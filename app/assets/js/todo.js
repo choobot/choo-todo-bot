@@ -2,9 +2,8 @@
 angular.module('todoApp', [])
   .controller('TodoListController', function ($scope, $http) {
     var todoList = this;
-    todoList.editTodo = {
-      "Task": "",
-    };
+    todoList.editTodo = {};
+    todoList.deleteTodo = {};
     todoList.editDue = "";
     showWorking();
     $http.get('/user-info')
@@ -33,7 +32,9 @@ angular.module('todoApp', [])
     todoList.pinTasks = function () {
       var tasks = [];
       angular.forEach(todoList.todos, function (todo) {
-        if (todo.Pin) tasks.push(todo);
+        if (todo.Pin) {
+          tasks.push(todo);
+        }
       });
       return sortByDue(tasks);
     };
@@ -41,7 +42,9 @@ angular.module('todoApp', [])
     todoList.nonPinTasks = function () {
       var tasks = [];
       angular.forEach(todoList.todos, function (todo) {
-        if (!todo.Pin) tasks.push(todo);
+        if (!todo.Pin) {
+          tasks.push(todo);
+        }
       });
       return sortByDue(tasks);
     };
@@ -88,7 +91,7 @@ angular.module('todoApp', [])
         lastWeek: '[Last] dddd [at] H:mm',
         sameElse: 'ddd D MMM YY [at] H:mm'
       });
-      return dateString
+      return dateString;
     };
 
     todoList.isOverdue = function (todo) {
@@ -102,9 +105,9 @@ angular.module('todoApp', [])
       return moment(date).format('YYYY-MM-DD[T]HH:mm');
     };
 
-    todoList.editForm = function (todo) {
+    todoList.toEdit = function (todo) {
       todoList.editTodo = todo;
-      todoList.editDue = formatDateInput(todo.Due)
+      todoList.editDue = formatDateInput(todo.Due);
     };
 
     todoList.edit = function () {
@@ -112,20 +115,24 @@ angular.module('todoApp', [])
       todoList.editTodo.Task = $("#task-input").val();
       todoList.editDue = $("#due-input").val();
       todoList.editTodo.Due = new Date(todoList.editDue);
-      updateEditTodoLocal(todoList.editTodo)
       var data = {
         "ID": todoList.editTodo.ID,
         "Task": todoList.editTodo.Task,
         "Due": todoList.editTodo.Due
       };
       $http.post('/edit', data)
-        .then(hideWorking)
+        .then(function () {
+          todoList.updateEditTodoLocal(todoList.editTodo);
+          hideWorking();
+        })
         .catch(hideWorking);
     };
 
-    function updateEditTodoLocal(editTodo) {
-      for (var i=0; i<todoList.todos.length; i++) {
-        if(todoList.todos[i].ID == editTodo.ID) {
+    todoList.updateEditTodoLocal = function(editTodo) {
+      for (var i = 0; i < todoList.todos.length; i++) {
+        if (todoList.todos[i].ID == editTodo.ID) {
+          console.log(editTodo);
+          console.log(todoList.todos[i]);
           todoList.todos[i] = editTodo;
           return;
         }
@@ -138,6 +145,32 @@ angular.module('todoApp', [])
 
     function hideWorking() {
       todoList.isWorking = false;
+    }
+
+    todoList.toDelete = function (todo) {
+      todoList.deleteTodo = todo;
+    };
+
+    todoList.delete = function () {
+      showWorking();
+      var data = {
+        "ID": todoList.deleteTodo.ID
+      };
+      $http.post('/delete', data)
+        .then(function () {
+          todoList.updateDeleteTodoLocal(todoList.deleteTodo);
+          hideWorking();
+        })
+        .catch(hideWorking);
+    };
+
+    todoList.updateDeleteTodoLocal = function(deleteTodo) {
+      for (var i = 0; i < todoList.todos.length; i++) {
+        if (todoList.todos[i].ID == deleteTodo.ID) {
+          todoList.todos.splice(i, 1);
+          return;
+        }
+      }
     }
 
   });

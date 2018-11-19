@@ -51,6 +51,10 @@ describe('todoApp', function () {
             .respond();
         $httpBackend.when('POST', '/done')
             .respond();
+        $httpBackend.when('POST', '/edit')
+            .respond();
+        $httpBackend.when('POST', '/delete')
+            .respond();
         $httpBackend.when('GET', '/user-info')
             .respond({
                 "oauthPicture": "oauthPicture",
@@ -143,7 +147,7 @@ describe('todoApp', function () {
                         "Done": false,
                         "Pin": true,
                         "Due": "2018-11-10T12:27:00+07:00"
-                    }        
+                    }
 
                 ]);
             });
@@ -217,7 +221,61 @@ describe('todoApp', function () {
                 var result = todoList.isOverdue(todo);
                 expect(result).toEqual("");
             });
-            
+
+        });
+
+        describe('toEdit()', function () {
+            it('shoud copy todo to editing todo', function () {
+                var todoList = $controller('TodoListController', { $scope: $rootScope });
+                $httpBackend.flush();
+                var todo = {
+                    ID: 1,
+                    Task: "dummy",
+                    Due: "1980-11-18T13:00:00+07:00"
+                };
+                todoList.toEdit(todo);
+                expect(todoList.editTodo).toEqual(todo);
+            });
+            it('shoud copy todo due to editing due with a proper format for HTML5 input', function () {
+                var todoList = $controller('TodoListController', { $scope: $rootScope });
+                $httpBackend.flush();
+                var todo = {
+                    ID: 1,
+                    Task: "dummy",
+                    Due: "1980-11-18T13:00:00+00:00"
+                };
+                todoList.toEdit(todo);
+                expect(todoList.editDue).toEqual("1980-11-18T13:00");
+            });
+        });
+
+        describe('toDelete()', function () {
+            it('shoud copy todo to deleting todo', function () {
+                var todoList = $controller('TodoListController', { $scope: $rootScope });
+                $httpBackend.flush();
+                var todo = {
+                    ID: 1,
+                    Task: "dummy",
+                    Due: "1980-11-18T12:00:00+07:00"
+                };
+                todoList.toDelete(todo);
+                expect(todoList.deleteTodo).toEqual(todo);
+            });
+        });
+
+        describe('delete(id)', function () {
+            it('shoud post to /delete', function () {
+                var todoList = $controller('TodoListController', { $scope: $rootScope });
+                $httpBackend.flush();
+                $httpBackend.expectPOST('/delete');
+                var todo = {
+                    ID: 1,
+                    Task: "dummy",
+                    Due: "1980-11-18T12:00:00+07:00"
+                };
+                todoList.delete(todo);
+                $httpBackend.flush();
+            });
         });
     });
 });

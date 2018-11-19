@@ -160,6 +160,12 @@ func (this *mockTodoModel) Pin(todo model.Todo) error {
 func (this *mockTodoModel) Done(todo model.Todo) error {
 	return nil
 }
+func (this *mockTodoModel) Edit(todo model.Todo) error {
+	return nil
+}
+func (this *mockTodoModel) Delete(todo model.Todo) error {
+	return nil
+}
 func (this *mockTodoModel) Remind() (map[string][]model.Todo, error) {
 	if this.willError {
 		this.willError = false

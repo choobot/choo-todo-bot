@@ -1,22 +1,30 @@
 .done-true {
-    text-decoration: line-through;
-    color: grey;
+  text-decoration: line-through;
+  color: grey;
 }
 .header {
-    text-align: right;
+  text-align: right;
 }
 #working {
-    position: fixed;
-    top: 0;
-    left: 0;
-    background-color: #00be00;
-    color: #fff;
-  }
+  position: fixed;
+  top: 0;
+  left: 0;
+}
   
-  #working.true {
-    display: block;
-  }
-  
-  #working.false {
-    display: none;
-  }
+#working.true {
+  display: block;
+}
+
+#working.false {
+  display: none;
+}
+
+.line-bg {
+  background-color: #00be00;
+  color: #fff;
+  border-color: #00be00;
+}
+
+.todo-icon {
+  color: #333;
+}

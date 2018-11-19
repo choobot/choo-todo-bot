@@ -428,3 +428,50 @@ func TestTodoMySqlModelEdit(t *testing.T) {
 		t.Errorf("Result TodoMySqlModel.Edit(%#v) == %#v, want %#v", todo, err, wantErr)
 	}
 }
+
+func TestTodoMySqlModelDelete(t *testing.T) {
+	wantErr := errors.New("dummy error")
+	// Success
+	todo := Todo{
+		ID: 1,
+	}
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	mock.ExpectExec("DELETE FROM todo").WithArgs(todo.ID).WillReturnResult(sqlmock.NewResult(1, 1))
+	model := TodoMySqlModel{
+		db: db,
+	}
+	err = model.Delete(todo)
+	if err != nil {
+		t.Errorf("Result TodoMySqlModel.Delete(%#v) == %#v, want %#v", todo, err, nil)
+	}
+	// Error when insert row
+	db, mock, err = sqlmock.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	mock.ExpectExec("DELETE FROM todo").WithArgs(todo.ID).WillReturnError(wantErr)
+	model = TodoMySqlModel{
+		db: db,
+	}
+	err = model.Delete(todo)
+	if err == nil || err.Error() != wantErr.Error() {
+		t.Errorf("Result TodoMySqlModel.Delete(%#v) == %#v, want %#v", todo, err, wantErr)
+	}
+	// No row affected
+	wantErr = errors.New("No record")
+	db, mock, err = sqlmock.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	mock.ExpectExec("DELETE FROM todo").WithArgs(todo.ID).WillReturnResult(sqlmock.NewResult(1, 0))
+	model = TodoMySqlModel{
+		db: db,
+	}
+	err = model.Delete(todo)
+	if err == nil || err.Error() != wantErr.Error() {
+		t.Errorf("Result TodoMySqlModel.Delete(%#v) == %#v, want %#v", todo, err, wantErr)
+	}
+}

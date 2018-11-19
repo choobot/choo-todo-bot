@@ -143,3 +143,15 @@ func (this *WebController) Edit(c echo.Context) error {
 	}
 	return c.NoContent(http.StatusOK)
 }
+
+func (this *WebController) Delete(c echo.Context) error {
+	this.SetNoCache(c)
+	todo := new(model.Todo)
+	if err := c.Bind(todo); err != nil {
+		return c.HTML(http.StatusInternalServerError, err.Error())
+	}
+	if err := this.TodoModel.Delete(*todo); err != nil {
+		return c.HTML(http.StatusInternalServerError, err.Error())
+	}
+	return c.NoContent(http.StatusOK)
+}

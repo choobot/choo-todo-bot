@@ -87,6 +87,20 @@ func (this *mockTodoModel) Remind() (map[string][]model.Todo, error) {
 	userTodos["dummy"] = todos
 	return userTodos, nil
 }
+func (this *mockTodoModel) Edit(todo model.Todo) error {
+	if this.willError {
+		this.willError = false
+		return errors.New("dummy")
+	}
+	return nil
+}
+func (this *mockTodoModel) Delete(todo model.Todo) error {
+	if this.willError {
+		this.willError = false
+		return errors.New("dummy")
+	}
+	return nil
+}
 
 type mockSessionService struct {
 	sessions map[string]interface{}
@@ -276,7 +290,7 @@ func TestWebControllerDone(t *testing.T) {
 	// Valid
 	b, _ := json.Marshal(todos[0])
 	inputJSON := string(b)
-	req := httptest.NewRequest(http.MethodPost, "/pin", strings.NewReader(inputJSON))
+	req := httptest.NewRequest(http.MethodPost, "/done", strings.NewReader(inputJSON))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
@@ -303,7 +317,7 @@ func TestWebControllerDone(t *testing.T) {
 	todoModel.willError = true
 	b, _ = json.Marshal(todos[0])
 	inputJSON = string(b)
-	req = httptest.NewRequest(http.MethodPost, "/pin", strings.NewReader(inputJSON))
+	req = httptest.NewRequest(http.MethodPost, "/done", strings.NewReader(inputJSON))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
@@ -465,5 +479,109 @@ func TestWebControllerAuth(t *testing.T) {
 	if assert.NoError(t, controller.Auth(c)) {
 		assert.Equal(t, http.StatusTemporaryRedirect, rec.Code)
 		assert.Equal(t, "/", rec.Header().Get("Location"))
+	}
+}
+
+func TestWebControllerEdit(t *testing.T) {
+	todoModel := mockTodoModel{}
+	sessionService := mockSessionService{
+		sessions: map[string]interface{}{},
+	}
+	controller := WebController{
+		TodoModel:      &todoModel,
+		SessionService: &sessionService,
+	}
+	e := echo.New()
+
+	// Valid
+	b, _ := json.Marshal(todos[0])
+	inputJSON := string(b)
+	req := httptest.NewRequest(http.MethodPost, "/edit", strings.NewReader(inputJSON))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	if assert.NoError(t, controller.Edit(c)) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, "", rec.Body.String())
+	}
+
+	// Invalid JSON
+	b, _ = json.Marshal("")
+	inputJSON = string(b)
+	req = httptest.NewRequest(http.MethodPost, "/edit", strings.NewReader(inputJSON))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec)
+
+	if assert.NoError(t, controller.Edit(c)) {
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+		assert.Equal(t, "code=400, message=Unmarshal type error: expected=model.Todo, got=string, field=, offset=2", rec.Body.String())
+	}
+
+	// Error from Model
+	todoModel.willError = true
+	b, _ = json.Marshal(todos[0])
+	inputJSON = string(b)
+	req = httptest.NewRequest(http.MethodPost, "/edit", strings.NewReader(inputJSON))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec)
+
+	if assert.NoError(t, controller.Edit(c)) {
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+		assert.Equal(t, "dummy", rec.Body.String())
+	}
+}
+
+func TestWebControllerDelete(t *testing.T) {
+	todoModel := mockTodoModel{}
+	sessionService := mockSessionService{
+		sessions: map[string]interface{}{},
+	}
+	controller := WebController{
+		TodoModel:      &todoModel,
+		SessionService: &sessionService,
+	}
+	e := echo.New()
+
+	// Valid
+	b, _ := json.Marshal(todos[0])
+	inputJSON := string(b)
+	req := httptest.NewRequest(http.MethodPost, "/delete", strings.NewReader(inputJSON))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	if assert.NoError(t, controller.Delete(c)) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, "", rec.Body.String())
+	}
+
+	// Invalid JSON
+	b, _ = json.Marshal("")
+	inputJSON = string(b)
+	req = httptest.NewRequest(http.MethodPost, "/delete", strings.NewReader(inputJSON))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec)
+
+	if assert.NoError(t, controller.Delete(c)) {
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+		assert.Equal(t, "code=400, message=Unmarshal type error: expected=model.Todo, got=string, field=, offset=2", rec.Body.String())
+	}
+
+	// Error from Model
+	todoModel.willError = true
+	b, _ = json.Marshal(todos[0])
+	inputJSON = string(b)
+	req = httptest.NewRequest(http.MethodPost, "/delete", strings.NewReader(inputJSON))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec)
+
+	if assert.NoError(t, controller.Delete(c)) {
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+		assert.Equal(t, "dummy", rec.Body.String())
 	}
 }
