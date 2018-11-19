@@ -98,7 +98,6 @@ func (this *WebController) Done(c echo.Context) error {
 	if err := c.Bind(todo); err != nil {
 		return c.HTML(http.StatusInternalServerError, err.Error())
 	}
-	log.Println(todo)
 	if err := this.TodoModel.Done(*todo); err != nil {
 		return c.HTML(http.StatusInternalServerError, err.Error())
 	}
@@ -131,4 +130,16 @@ func (this *WebController) Logout(c echo.Context) error {
 	}
 	this.SessionService.Destroy(c)
 	return c.Redirect(http.StatusTemporaryRedirect, "/")
+}
+
+func (this *WebController) Edit(c echo.Context) error {
+	this.SetNoCache(c)
+	todo := new(model.Todo)
+	if err := c.Bind(todo); err != nil {
+		return c.HTML(http.StatusInternalServerError, err.Error())
+	}
+	if err := this.TodoModel.Edit(*todo); err != nil {
+		return c.HTML(http.StatusInternalServerError, err.Error())
+	}
+	return c.NoContent(http.StatusOK)
 }

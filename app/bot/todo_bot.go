@@ -23,19 +23,19 @@ func (this *TodoBot) Remind() error {
 		return err
 	}
 	for userID, todos := range userTodos {
-		message := "Hi there,\n"
+		message := "Hello,\n"
 		showDone := false
 		remaining := 0
 		for i, todo := range todos {
 			if i == 0 && todo.Done {
 				message += "Well done, you have no remaining tasks to be done :)\n"
 			} else if i == 0 {
-				message += "Tasks to be done:\n"
+				message += "[ Tasks to be done ]\n"
 			}
 			if !todo.Done {
 				remaining++
 			} else if todo.Done && !showDone {
-				message += "Tasks completed:\n"
+				message += "[ Tasks completed ]\n"
 				showDone = true
 			}
 			if todo.Pin {

@@ -25,6 +25,7 @@ type TodoModel interface {
 	Pin(todo Todo) error
 	Done(todo Todo) error
 	Remind() (map[string][]Todo, error)
+	Edit(todo Todo) error
 }
 
 type TodoMySqlModel struct {
@@ -208,5 +209,24 @@ func (this *TodoMySqlModel) Remind() (map[string][]Todo, error) {
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
+
 	return userTodos, nil
+}
+
+func (this *TodoMySqlModel) Edit(todo Todo) error {
+	log.Println(todo)
+	sql := `UPDATE todo SET task=?, due=? WHERE id=?`
+	result, err := this.db.Exec(sql, todo.Task, todo.Due, todo.ID)
+	if err != nil {
+		return err
+	}
+	num, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if num != 1 {
+		return errors.New("No record")
+	}
+
+	return nil
 }

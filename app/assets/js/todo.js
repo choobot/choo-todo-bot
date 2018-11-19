@@ -1,16 +1,25 @@
+"use strict";
 angular.module('todoApp', [])
   .controller('TodoListController', function ($scope, $http) {
     var todoList = this;
-    todoList.isWorking = true;
-    $http.get('/user-info').then(function (response) {
-      todoList.user = response.data;
-      todoList.isWorking = false;
-    });
-    todoList.isWorking = true;
-    $http.get('/list').then(function (response) {
-      todoList.todos = response.data;
-      todoList.isWorking = false;
-    });
+    todoList.editTodo = {
+      "Task": "",
+    };
+    todoList.editDue = "";
+    showWorking();
+    $http.get('/user-info')
+      .then(function (response) {
+        todoList.user = response.data;
+        hideWorking();
+      })
+      .catch(hideWorking);
+    showWorking();
+    $http.get('/list')
+      .then(function (response) {
+        todoList.todos = response.data;
+        hideWorking();
+      })
+      .catch(hideWorking);
 
     todoList.remaining = function () {
       var count = 0;
@@ -38,25 +47,25 @@ angular.module('todoApp', [])
     };
 
     todoList.setDone = function (id, status) {
-      todoList.isWorking = true;
+      showWorking();
       var data = {
         "ID": id,
         "Done": status
       };
-      $http.post('/done', data).then(function (response) {
-        todoList.isWorking = false;
-      });
+      $http.post('/done', data)
+        .then(hideWorking)
+        .catch(hideWorking);
     };
 
     todoList.setPin = function (id, status) {
-      todoList.isWorking = true;
+      showWorking();
       var data = {
         "ID": id,
         "Pin": status
       };
-      $http.post('/pin', data).then(function (response) {
-        todoList.isWorking = false;
-      });
+      $http.post('/pin', data)
+        .then(hideWorking)
+        .catch(hideWorking);
     };
 
     function sortByDue(tasks) {
@@ -71,7 +80,7 @@ angular.module('todoApp', [])
     }
 
     todoList.formatDate = function (date) {
-      dateString = moment(date).calendar(Date.now(), {
+      var dateString = moment(date).calendar(Date.now(), {
         sameDay: '[Today] [at] H:mm',
         nextDay: '[Tomorrow] [at] H:mm',
         nextWeek: 'dddd [at] H:mm',
@@ -82,11 +91,53 @@ angular.module('todoApp', [])
       return dateString
     };
 
-    todoList.isOverdue = function(todo) {
-      if(!todo.Done && (new Date()) > new Date(todo.Due)) {
+    todoList.isOverdue = function (todo) {
+      if (!todo.Done && (new Date()) > new Date(todo.Due)) {
         return "(overdue)";
       }
       return "";
+    }
+
+    function formatDateInput(date) {
+      return moment(date).format('YYYY-MM-DD[T]HH:mm');
+    };
+
+    todoList.editForm = function (todo) {
+      todoList.editTodo = todo;
+      todoList.editDue = formatDateInput(todo.Due)
+    };
+
+    todoList.edit = function () {
+      showWorking();
+      todoList.editTodo.Task = $("#task-input").val();
+      todoList.editDue = $("#due-input").val();
+      todoList.editTodo.Due = new Date(todoList.editDue);
+      updateEditTodoLocal(todoList.editTodo)
+      var data = {
+        "ID": todoList.editTodo.ID,
+        "Task": todoList.editTodo.Task,
+        "Due": todoList.editTodo.Due
+      };
+      $http.post('/edit', data)
+        .then(hideWorking)
+        .catch(hideWorking);
+    };
+
+    function updateEditTodoLocal(editTodo) {
+      for (var i=0; i<todoList.todos.length; i++) {
+        if(todoList.todos[i].ID == editTodo.ID) {
+          todoList.todos[i] = editTodo;
+          return;
+        }
+      }
+    }
+
+    function showWorking() {
+      todoList.isWorking = true;
+    }
+
+    function hideWorking() {
+      todoList.isWorking = false;
     }
 
   });

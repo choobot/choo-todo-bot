@@ -1,6 +1,7 @@
 package main
 
 import (
+	"go/build"
 	"log"
 	"net/http"
 	"os"
@@ -65,7 +66,7 @@ func main() {
 		}
 		return c.NoContent(http.StatusOK)
 	})
-	e.Static("/", "assets")
+	e.Static("/", build.Default.GOPATH+"/src/github.com/choobot/choo-todo-bot/app/assets")
 	e.GET("/", webController.Index)
 	e.GET("/login", webController.Login)
 	e.GET("/auth", webController.Auth)
@@ -74,6 +75,7 @@ func main() {
 	e.POST("/done", webController.Done)
 	e.GET("/user-info", webController.UserInfo)
 	e.GET("/logout", webController.Logout)
+	e.POST("/edit", webController.Edit)
 
 	port := os.Getenv("PORT")
 	if port == "" {

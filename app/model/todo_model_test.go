@@ -379,3 +379,52 @@ func TestTodoMySqlModelRemind(t *testing.T) {
 		t.Errorf("Result TodoMySqlModel.Remind() == %v, want %v", err, wantErr)
 	}
 }
+
+func TestTodoMySqlModelEdit(t *testing.T) {
+	wantErr := errors.New("dummy error")
+	// Success
+	todo := Todo{
+		ID:   1,
+		Task: "dummy",
+		Due:  time.Now(),
+	}
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	mock.ExpectExec("UPDATE todo").WithArgs(todo.Task, todo.Due, todo.ID).WillReturnResult(sqlmock.NewResult(1, 1))
+	model := TodoMySqlModel{
+		db: db,
+	}
+	err = model.Edit(todo)
+	if err != nil {
+		t.Errorf("Result TodoMySqlModel.Edit(%#v) == %#v, want %#v", todo, err, nil)
+	}
+	// Error when insert row
+	db, mock, err = sqlmock.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	mock.ExpectExec("UPDATE todo").WithArgs(todo.Task, todo.Due, todo.ID).WillReturnError(wantErr)
+	model = TodoMySqlModel{
+		db: db,
+	}
+	err = model.Edit(todo)
+	if err == nil || err.Error() != wantErr.Error() {
+		t.Errorf("Result TodoMySqlModel.Edit(%#v) == %#v, want %#v", todo, err, wantErr)
+	}
+	// No row affected
+	wantErr = errors.New("No record")
+	db, mock, err = sqlmock.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	mock.ExpectExec("UPDATE todo").WithArgs(todo.Task, todo.Due, todo.ID).WillReturnResult(sqlmock.NewResult(1, 0))
+	model = TodoMySqlModel{
+		db: db,
+	}
+	err = model.Edit(todo)
+	if err == nil || err.Error() != wantErr.Error() {
+		t.Errorf("Result TodoMySqlModel.Edit(%#v) == %#v, want %#v", todo, err, wantErr)
+	}
+}
