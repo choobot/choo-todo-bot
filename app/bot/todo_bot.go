@@ -23,25 +23,25 @@ func (this *TodoBot) Remind() error {
 		return err
 	}
 	for userID, todos := range userTodos {
-		message := "Hello,\n"
+		message := ""
 		showDone := false
 		remaining := 0
 		for i, todo := range todos {
 			if i == 0 && todo.Done {
-				message += "Well done, you have no remaining tasks to be done :)\n"
+				message += "Well done, you have no remaining tasks to be done 😎\n"
 			} else if i == 0 {
-				message += "[ Tasks to be done ]\n"
+				message += "🎯 TASKS TO BE DONE 🎯\n\n"
 			}
 			if !todo.Done {
 				remaining++
 			} else if todo.Done && !showDone {
-				message += "[ Tasks completed ]\n"
+				message += "\n🆗 TASKS COMPLETED 🆗\n\n"
 				showDone = true
 			}
 			if todo.Pin {
-				message += "*** "
+				message += "⭐️ "
 			} else {
-				message += "    "
+				message += "📆 "
 			}
 			due := this.FormatDate(time.Now(), todo.Due)
 			if !todo.Done && time.Now().After(todo.Due) {
@@ -51,8 +51,9 @@ func (this *TodoBot) Remind() error {
 
 		}
 		if remaining != 0 {
-			message += fmt.Sprintf("%d of %d remaining, just do it!", remaining, len(todos))
+			message += fmt.Sprintf("\n%d of %d remaining, just do it! 💪\n\n", remaining, len(todos))
 		}
+		message += "To edit go to " + os.Getenv("EDIT_URL")
 		//Fork for massive API calls
 		go this.PushMessage(userID, message)
 	}
@@ -142,13 +143,13 @@ func (this *TodoBot) ParseUserMessage(msg string) (model.Todo, error) {
 
 func (this *TodoBot) Response(events []*linebot.Event) error {
 	howto := `You can create todo list by using these formats:
-	1) Go shopping : 25/5/18 : 13:00
-	2) Go shopping : 25/5/18
-	3) Go shopping : today : 15:30
-	4) Go shopping : today
-	5) Go shopping : tomorrow : 18:00
-	6) Go shopping : tomorrow
-You can edit todo list by input word "edit"`
+• Go shopping : 25/5/18 : 13:00
+• Go shopping : 25/5/18
+• Go shopping : today : 15:30
+• Go shopping : today
+• Go shopping : tomorrow : 18:00
+• Go shopping : tomorrow
+You can edit todo list by input word "edit".`
 
 	for _, event := range events {
 		if event.Type == linebot.EventTypeMessage {
@@ -174,7 +175,7 @@ You can edit todo list by input word "edit"`
 								return err
 							}
 						} else {
-							reply := "Task has been created."
+							reply := "Task has been created 🆗"
 							if _, err = this.Client.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(reply)).Do(); err != nil {
 								return err
 							}
