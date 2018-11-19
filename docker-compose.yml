@@ -13,6 +13,8 @@ services:
       - EDIT_URL=${EDIT_URL}
     ports:
       - '80:80'
+    networks:
+      - backend-network
   mysql:
     image: mysql:5.7
     environment:
@@ -24,5 +26,9 @@ services:
       - mysql-data:/var/lib/mysql/
     ports:
       - '3306:3306'
+    networks:
+      - backend-network
 volumes:
   mysql-data:
+networks:
+  backend-network:

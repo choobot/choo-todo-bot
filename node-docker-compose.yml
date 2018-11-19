@@ -9,3 +9,7 @@ services:
       - ./app/assets/js/:/js/
     entrypoint: "/bin/sh"
     command: ["-c", "yarn install && yarn test"]
+    networks:
+      - frontend-network
+networks:
+  frontend-network:
