@@ -2,6 +2,7 @@
 angular.module('todoApp', [])
   .controller('TodoListController', function ($scope, $http) {
     var todoList = this;
+    window.todoList = this;
     todoList.editTodo = {};
     todoList.deleteTodo = {};
     todoList.editDue = "";
@@ -108,6 +109,8 @@ angular.module('todoApp', [])
     todoList.toEdit = function (todo) {
       todoList.editTodo = todo;
       todoList.editDue = formatDateInput(todo.Due);
+      $("#task-input").val(todoList.editTodo.Task);
+      $("#due-input").val(todoList.editDue);
     };
 
     todoList.edit = function () {
