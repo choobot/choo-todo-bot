@@ -134,8 +134,6 @@ angular.module('todoApp', [])
     todoList.updateEditTodoLocal = function(editTodo) {
       for (var i = 0; i < todoList.todos.length; i++) {
         if (todoList.todos[i].ID == editTodo.ID) {
-          console.log(editTodo);
-          console.log(todoList.todos[i]);
           todoList.todos[i] = editTodo;
           return;
         }
