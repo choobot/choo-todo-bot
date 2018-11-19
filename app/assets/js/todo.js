@@ -117,7 +117,7 @@ angular.module('todoApp', [])
       showWorking();
       todoList.editTodo.Task = $("#task-input").val();
       todoList.editDue = $("#due-input").val();
-      todoList.editTodo.Due = new Date(todoList.editDue);
+      todoList.editTodo.Due = moment(todoList.editDue).format('YYYY-MM-DD[T]HH:mm:ssZ');
       var data = {
         "ID": todoList.editTodo.ID,
         "Task": todoList.editTodo.Task,
@@ -135,6 +135,7 @@ angular.module('todoApp', [])
       for (var i = 0; i < todoList.todos.length; i++) {
         if (todoList.todos[i].ID == editTodo.ID) {
           todoList.todos[i] = editTodo;
+          // todoList.apply();
           return;
         }
       }
